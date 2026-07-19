@@ -76,7 +76,7 @@ const clearSentenceBtn = document.getElementById('clearSentenceBtn');
 let sentenceWords = [];
 let lastAddedSign = "";
 let lastAddedTime = 0;
-const ADD_COOLDOWN_MS = 1800; // minimum gap before the same sign can be added again
+const ADD_COOLDOWN_MS = 1800;
 
 function renderSentence() {
   if (sentenceWords.length === 0) {
@@ -88,18 +88,13 @@ function renderSentence() {
   }
 }
 
-// Speaks a single word immediately - used for LIVE voice as each sign is detected
 function speakWord(word) {
   const utter = new SpeechSynthesisUtterance(word);
   utter.rate = 0.95;
-  speechSynthesis.cancel(); // stop any prior speech so words don't queue/overlap awkwardly
+  speechSynthesis.cancel();
   speechSynthesis.speak(utter);
 }
 
-// Called the instant a sign is confidently detected:
-// - adds it to the visible sentence (TEXT)
-// - speaks it out loud immediately (VOICE)
-// both happen together, live, at the same time.
 function addToSentence(word) {
   const now = Date.now();
   if (word === lastAddedSign && now - lastAddedTime < ADD_COOLDOWN_MS) return;
@@ -110,7 +105,6 @@ function addToSentence(word) {
   speakWord(word);
 }
 
-// "Speak sentence" button still available to replay the whole accumulated sentence on demand
 speakSentenceBtn.addEventListener('click', () => {
   if (sentenceWords.length === 0) return;
   const utter = new SpeechSynthesisUtterance(sentenceWords.join(" "));
@@ -187,7 +181,7 @@ function onResults(results) {
   if (detected && stableCount >= STABLE_FRAMES_NEEDED) {
     signLabel.textContent = detected;
     signLabel.classList.remove('idle');
-    addToSentence(detected); // text + voice, live, together
+    addToSentence(detected);
   } else if (!detected) {
     signLabel.textContent = "…";
     signLabel.classList.add('idle');
@@ -256,7 +250,6 @@ stopBtn.addEventListener('click', () => {
     camera.stop();
     camera = null;
   }
-  // stop the underlying video stream tracks too, so the camera light actually turns off
   if (videoEl.srcObject) {
     videoEl.srcObject.getTracks().forEach(track => track.stop());
     videoEl.srcObject = null;
