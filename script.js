@@ -67,6 +67,7 @@ const canvasEl = document.getElementById('canvas');
 const ctx = canvasEl.getContext('2d');
 const signLabel = document.getElementById('signLabel');
 const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
 const statusDot = document.getElementById('statusDot');
 const sentenceText = document.getElementById('sentenceText');
 const speakSentenceBtn = document.getElementById('speakSentenceBtn');
