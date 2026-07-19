@@ -27,6 +27,31 @@ button.solid { background: var(--moss); color: white; }
 .sentence-text.empty { color: #b3ac9c; font-style: italic; font-size: 0.95rem; font-family: sans-serif; }
 .sentence-actions { display: flex; gap: 10px; margin-top: 14px; }
 
+/* Conversation log */
+.conversation-box { width: min(640px, 92vw); margin-top: 20px; padding: 16px; background: white; border: 1px solid var(--line); border-radius: 6px; font-family: sans-serif; }
+.conversation-log { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; margin-bottom: 14px; }
+.conversation-log:empty::before { content: "Conversation will appear here…"; color: #b3ac9c; font-style: italic; font-size: 0.9rem; }
+.bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; font-size: 0.95rem; line-height: 1.4; }
+.bubble .bubble-meta { font-size: 0.68rem; opacity: 0.65; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+.bubble.signed { align-self: flex-start; background: var(--paper); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
+.bubble.typed { align-self: flex-end; background: var(--moss); color: white; border-bottom-right-radius: 3px; }
+.bubble.typed .bubble-meta { color: rgba(255,255,255,0.75); }
+.reply-input-row { display: flex; gap: 8px; }
+.reply-input-row input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; font-family: sans-serif; font-size: 0.95rem; }
+.mic-btn { padding: 10px 14px; font-size: 1rem; }
+.mic-btn.listening { background: #c94f2f; color: white; border-color: #c94f2f; }
+.unmatched-note { font-size: 0.75rem; color: #b3ac9c; margin-top: 8px; font-style: italic; }
+
+/* Big-text overlay for face-to-face reading */
+.big-text-overlay { position: fixed; inset: 0; background: var(--moss); color: white; display: none; align-items: center; justify-content: center; text-align: center; padding: 32px; z-index: 999; font-family: Georgia, serif; font-size: 2.2rem; line-height: 1.4; flex-direction: column; }
+.big-text-overlay.show { display: flex; }
+.big-text-overlay .close-hint { position: absolute; bottom: 24px; font-family: sans-serif; font-size: 0.8rem; opacity: 0.7; }
+.big-text-overlay .sign-emoji-big { font-size: 6rem; margin-bottom: 20px; }
+.big-text-overlay .sign-word-big { font-size: 1.8rem; }
+.big-text-overlay .progress-dots { display: flex; gap: 8px; margin-top: 28px; }
+.big-text-overlay .progress-dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.35); }
+.big-text-overlay .progress-dots span.active { background: white; }
+
 .settings { width: min(640px, 92vw); margin-top: 20px; padding: 16px; background: white; border: 1px solid var(--line); border-radius: 6px; font-family: sans-serif; }
 .settings-title { font-size: 0.85rem; font-weight: bold; color: var(--moss); margin-bottom: 12px; }
 .setting-row { margin-bottom: 14px; }
@@ -51,4 +76,4 @@ button.solid { background: var(--moss); color: white; }
 .lookup-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .lookup-chip { font-size: 0.8rem; padding: 6px 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 20px; cursor: pointer; color: #4a463c; }
 .lookup-chip:hover { background: var(--moss); color: white; }
-        
+               
