@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign to Speech</title>
-<script>window.onerror = function(msg, url, line) { alert("ERROR: " + msg + " (line " + line + ", file: " + url + ")"); };
-</script> <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
@@ -31,8 +30,10 @@
 
   <div class="readout">
     <div id="signLabel" class="sign-label idle">waiting for camera…</div>
-   <button id="startBtn">Start camera</button>
- <button id="stopBtn" style="display:none;">Stop camera</button>
+    <div>
+      <button id="startBtn">Start camera</button>
+      <button id="stopBtn" style="display:none;">Stop camera</button>
+    </div>
   </div>
 
   <div class="sentence-box">
