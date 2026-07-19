@@ -192,8 +192,7 @@ function sendReply() {
   if (!text) return;
   addBubble(text, 'typed');
   const matched = matchSignsInText(text);
-  alert("DEBUG — heard: \"" + text + "\" | matched signs: " + JSON.stringify(matched.map(m => m.word)));
-  if (matched.length > 0) {
+  
     playSignSequence(matched);
   } else {
     bigTextContent.innerHTML = `<div class="sign-word-big">No known signs found in that sentence</div>`;
