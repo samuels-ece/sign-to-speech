@@ -13,7 +13,7 @@
 
 <header>
   <h1>Sign <span>to</span> Speech</h1>
-  <p class="sub">Translate hand signs to speech, or look up how to sign a word.</p>
+  <p class="sub">A two-way conversation tool: signs become text + voice, typed replies show big and clear.</p>
 </header>
 
 <div class="tabs">
@@ -36,12 +36,18 @@
     </div>
   </div>
 
-  <div class="sentence-box">
-    <div class="sentence-title"><span class="status-dot" id="statusDot"></span>Sentence builder</div>
-    <div class="sentence-text empty" id="sentenceText">Signs will appear here as you make them…</div>
+  <!-- Two-way conversation -->
+  <div class="conversation-box">
+    <div class="sentence-title"><span class="status-dot" id="statusDot"></span>Conversation</div>
+    <div class="conversation-log" id="conversationLog"></div>
+    <div class="reply-input-row">
+      <button class="mic-btn" id="micBtn" title="Speak your reply">🎤</button>
+      <input type="text" id="replyInput" placeholder="Type or speak a reply…">
+      <button class="solid" id="sendReplyBtn">Send</button>
+    </div>
+    <div class="unmatched-note">Only words in the recognized vocabulary below will be shown as signs.</div>
     <div class="sentence-actions">
-      <button class="solid" id="speakSentenceBtn">Speak sentence</button>
-      <button id="clearSentenceBtn">Clear</button>
+      <button id="clearConversationBtn">Clear conversation</button>
     </div>
   </div>
 
@@ -84,6 +90,13 @@
     </div>
     <div class="lookup-chips" id="lookupChips"></div>
   </div>
+</div>
+
+<!-- Big-text overlay: shows typed replies large, or plays back matched signs in sequence -->
+<div class="big-text-overlay" id="bigTextOverlay">
+  <div id="bigTextContent"></div>
+  <div class="progress-dots" id="progressDots" style="display:none;"></div>
+  <div class="close-hint">tap anywhere to close</div>
 </div>
 
 <script src="script.js"></script>
