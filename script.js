@@ -241,6 +241,8 @@ startBtn.addEventListener('click', async () => {
     await camera.start();
     statusDot.classList.add('live');
     startBtn.textContent = "Camera live";
+    startBtn.style.display = "none";
+    stopBtn.style.display = "inline-block";
     signLabel.textContent = "watching…";
   } catch (err) {
     signLabel.textContent = "Camera access denied or unavailable.";
@@ -248,4 +250,23 @@ startBtn.addEventListener('click', async () => {
     startBtn.textContent = "Start camera";
   }
 });
-      
+
+stopBtn.addEventListener('click', () => {
+  if (camera) {
+    camera.stop();
+    camera = null;
+  }
+  // stop the underlying video stream tracks too, so the camera light actually turns off
+  if (videoEl.srcObject) {
+    videoEl.srcObject.getTracks().forEach(track => track.stop());
+    videoEl.srcObject = null;
+  }
+  ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  statusDot.classList.remove('live');
+  signLabel.textContent = "camera stopped";
+  signLabel.classList.add('idle');
+  stopBtn.style.display = "none";
+  startBtn.style.display = "inline-block";
+  startBtn.disabled = false;
+  startBtn.textContent = "Start camera";
+});
