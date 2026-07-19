@@ -94,6 +94,14 @@ function addToSentence(word) {
   lastAddedSign = word;
   lastAddedTime = now;
   renderSentence();
+  speakWord(word); // speak immediately as it's added, live
+}
+
+function speakWord(word) {
+  const utter = new SpeechSynthesisUtterance(word);
+  utter.rate = 0.95;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
 }
 
 speakSentenceBtn.addEventListener('click', () => {
