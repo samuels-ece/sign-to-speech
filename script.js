@@ -192,6 +192,7 @@ function sendReply() {
   if (!text) return;
   addBubble(text, 'typed');
   const matched = matchSignsInText(text);
+  alert("DEBUG — heard: \"" + text + "\" | matched signs: " + JSON.stringify(matched.map(m => m.word)));
   if (matched.length > 0) {
     playSignSequence(matched);
   } else {
@@ -398,4 +399,3 @@ stopBtn.addEventListener('click', () => {
   startBtn.disabled = false;
   startBtn.textContent = "Start camera";
 });
-  
