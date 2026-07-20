@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign to Speech</title>
-<script>window.onerror = function(msg, url, line) { alert("ERROR: " + msg + " (line " + line + ")"); };</script>
-  <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1620248257/drawing_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
@@ -14,7 +13,7 @@
 
 <header>
   <h1>Sign <span>to</span> Speech</h1>
-  <p class="sub">A two-way conversation tool: signs become text + voice, typed replies show big and clear.</p>
+  <p class="sub">Real ASL fingerspelling, recognized live — spell any word, letter by letter.</p>
 </header>
 
 <div class="tabs">
@@ -41,14 +40,30 @@
   <div class="conversation-box">
     <div class="sentence-title"><span class="status-dot" id="statusDot"></span>Conversation</div>
     <div class="conversation-log" id="conversationLog"></div>
+    <div class="mode-toggle-row">
+      <span id="modeLabel">💬 Text captions (with sign icons)</span>
+      <label class="mode-toggle">
+        <input type="checkbox" id="visualModeToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
     <div class="reply-input-row">
       <button class="mic-btn" id="micBtn" title="Speak your reply">🎤</button>
       <input type="text" id="replyInput" placeholder="Type or speak a reply…">
       <button class="solid" id="sendReplyBtn">Send</button>
     </div>
-    <div class="unmatched-note">Only words in the recognized vocabulary below will be shown as signs.</div>
+    <div class="unmatched-note">Turn on "Visual sign mode" for Deaf users who read signs, not text.</div>
     <div class="sentence-actions">
       <button id="clearConversationBtn">Clear conversation</button>
+    </div>
+  </div>
+
+  <!-- Running paragraph transcript of the whole conversation -->
+  <div class="transcript-box">
+    <div class="sentence-title">Full Transcript</div>
+    <div class="transcript-text empty" id="transcriptText">Your conversation transcript will build up here as a readable paragraph…</div>
+    <div class="sentence-actions">
+      <button id="downloadTranscriptBtn">Download transcript</button>
     </div>
   </div>
 
@@ -65,16 +80,19 @@
   </div>
 
   <div class="vocab">
-    <div class="vocab-title">Recognized signs</div>
+    <div class="vocab-title">Supported ASL letters (reliable subset)</div>
     <div class="vocab-list">
-      <span class="vocab-item">👍 Thumbs up → "Yes"</span>
-      <span class="vocab-item">👎 Thumbs down → "No"</span>
-      <span class="vocab-item">✋ Open palm → "Hello"</span>
-      <span class="vocab-item">✊ Fist → "Stop"</span>
-      <span class="vocab-item">✌️ Peace sign → "Peace"</span>
-      <span class="vocab-item">🤟 I love you → "I love you"</span>
-      <span class="vocab-item">☝️ Point up → "Wait"</span>
+      <span class="vocab-item">✊ Fist → A</span>
+      <span class="vocab-item">✋ 4 fingers, thumb tucked → B</span>
+      <span class="vocab-item">☝️ Index only → D</span>
+      <span class="vocab-item">🤙 Pinky only → I</span>
+      <span class="vocab-item">🤟 Thumb+Index → L</span>
+      <span class="vocab-item">✊ Closed fist → S</span>
+      <span class="vocab-item">✌️ Index+Middle → V</span>
+      <span class="vocab-item">🖖 Index+Middle+Ring → W</span>
+      <span class="vocab-item">🤙 Thumb+Pinky → Y</span>
     </div>
+    <div class="unmatched-note">Other letters (motion-based or visually similar) aren't reliably detectable from a static camera pose yet.</div>
   </div>
 </div>
 
