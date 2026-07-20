@@ -1,13 +1,21 @@
-/* ---------- Shared vocabulary (sign <-> word <-> emoji) ---------- */
-const VOCAB = [
-  { word: "Hello", emoji: "✋" },
-  { word: "Stop", emoji: "✊" },
-  { word: "Yes", emoji: "👍" },
-  { word: "No", emoji: "👎" },
-  { word: "Peace", emoji: "✌️" },
-  { word: "I love you", emoji: "🤟" },
-  { word: "Wait", emoji: "☝️" }
+/* ---------- ASL Fingerspelling: a RELIABLE subset of real ASL letters ----------
+   Only letters that are clearly distinguishable from a single static hand
+   pose via camera are included. This is a deliberate accuracy tradeoff:
+   better to support 9 letters correctly than 26 unreliably.
+   Excluded: motion letters (J, Z) and visually-similar static letters
+   that need finer detail than finger-extended/curled (C, E, M, N, O, T, etc). */
+const ASL_LETTERS = [
+  { letter: "A", desc: "Closed fist, thumb resting alongside the hand" },
+  { letter: "B", desc: "Four fingers up together, thumb folded across palm" },
+  { letter: "D", desc: "Index finger only, pointing straight up" },
+  { letter: "I", desc: "Pinky finger only, extended up" },
+  { letter: "L", desc: "Thumb and index finger extended, forming an L" },
+  { letter: "S", desc: "Closed fist (like a fist bump)" },
+  { letter: "V", desc: "Index and middle fingers extended, spread apart" },
+  { letter: "W", desc: "Index, middle, and ring fingers extended" },
+  { letter: "Y", desc: "Thumb and pinky extended, middle fingers folded" }
 ];
+const SUPPORTED_LETTERS = ASL_LETTERS.map(l => l.letter);
 
 /* ---------- Tab switching ---------- */
 const tabDetectBtn = document.getElementById('tabDetectBtn');
@@ -28,38 +36,37 @@ tabLookupBtn.addEventListener('click', () => {
   detectPanel.classList.remove('active');
 });
 
-/* ---------- Text-to-sign lookup ---------- */
+/* ---------- Letter lookup tab ---------- */
 const lookupSelect = document.getElementById('lookupSelect');
 const lookupResult = document.getElementById('lookupResult');
 const lookupChips = document.getElementById('lookupChips');
 
-VOCAB.forEach(v => {
+ASL_LETTERS.forEach(entry => {
   const opt = document.createElement('option');
-  opt.value = v.word;
-  opt.textContent = v.word;
+  opt.value = entry.letter;
+  opt.textContent = entry.letter;
   lookupSelect.appendChild(opt);
 
   const chip = document.createElement('span');
   chip.className = 'lookup-chip';
-  chip.textContent = v.word;
-  chip.addEventListener('click', () => showSign(v.word));
+  chip.textContent = entry.letter;
+  chip.addEventListener('click', () => showLetter(entry.letter));
   lookupChips.appendChild(chip);
 });
 
-function showSign(word) {
-  const entry = VOCAB.find(v => v.word === word);
-  lookupSelect.value = word;
+function showLetter(letter) {
+  const entry = ASL_LETTERS.find(l => l.letter === letter);
+  lookupSelect.value = letter;
   if (!entry) {
-    lookupResult.innerHTML = '<div class="lookup-empty">Pick a word above to see its sign</div>';
+    lookupResult.innerHTML = '<div class="lookup-empty">Pick a letter above</div>';
     return;
   }
   lookupResult.innerHTML = `
-    <div class="lookup-emoji">${entry.emoji}</div>
-    <div class="lookup-word">${entry.word}</div>
+    <div class="lookup-emoji">${entry.letter}</div>
+    <div class="lookup-word">${entry.desc}</div>
   `;
 }
-
-lookupSelect.addEventListener('change', (e) => showSign(e.target.value));
+lookupSelect.addEventListener('change', (e) => showLetter(e.target.value));
 
 /* ---------- Detection tab logic ---------- */
 const videoEl = document.getElementById('video');
@@ -70,7 +77,6 @@ const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
 const statusDot = document.getElementById('statusDot');
 
-/* ---------- Conversation log (two-way) ---------- */
 const conversationLog = document.getElementById('conversationLog');
 const replyInput = document.getElementById('replyInput');
 const sendReplyBtn = document.getElementById('sendReplyBtn');
@@ -79,13 +85,16 @@ const bigTextOverlay = document.getElementById('bigTextOverlay');
 const bigTextContent = document.getElementById('bigTextContent');
 const progressDots = document.getElementById('progressDots');
 const micBtn = document.getElementById('micBtn');
+const visualModeToggle = document.getElementById('visualModeToggle');
+const modeLabel = document.getElementById('modeLabel');
 
-let lastAddedSign = "";
-let lastAddedTime = 0;
-const ADD_COOLDOWN_MS = 1800;
+visualModeToggle.addEventListener('change', () => {
+  modeLabel.textContent = visualModeToggle.checked
+    ? "🖐️ Fingerspell mode (letters shown visually, no reading needed)"
+    : "💬 Text captions";
+});
 
 function addBubble(text, type) {
-  // type: 'signed' (from the person signing) or 'typed' (from the person replying)
   const bubble = document.createElement('div');
   bubble.className = `bubble ${type}`;
   const meta = document.createElement('div');
@@ -106,6 +115,41 @@ function speakWord(text) {
   speechSynthesis.speak(utter);
 }
 
+/* ---------- Signed letters -> spelled word (camera side) ----------
+   Letters made in quick succession buffer into a spelled word; a pause
+   means "done spelling" - the word is then shown and spoken as a whole. */
+let letterBuffer = [];
+let lastAddedLetter = "";
+let lastAddedTime = 0;
+const ADD_COOLDOWN_MS = 1200;
+let sentenceFlushTimer = null;
+const SPELL_PAUSE_MS = 2000;
+
+function addSignedLetter(letter) {
+  const now = Date.now();
+  if (letter === lastAddedLetter && now - lastAddedTime < ADD_COOLDOWN_MS) return;
+  lastAddedLetter = letter;
+  lastAddedTime = now;
+
+  letterBuffer.push(letter);
+  signLabel.textContent = letterBuffer.join("");
+
+  if (sentenceFlushTimer) clearTimeout(sentenceFlushTimer);
+  sentenceFlushTimer = setTimeout(flushSpelledWord, SPELL_PAUSE_MS);
+}
+
+function flushSpelledWord() {
+  if (letterBuffer.length === 0) return;
+  const word = letterBuffer.join("");
+  addBubble(word, 'signed');
+  speakWord(word);
+  letterBuffer = [];
+}
+
+/* ---------- Speech/text -> fingerspelled letters (reverse direction) ----------
+   Works for ANY word, not just a fixed vocabulary - that's the advantage
+   of real fingerspelling. Supported letters show large; unsupported
+   letters show a neutral placeholder instead of guessing wrong. */
 let playbackTimer = null;
 
 function stopPlayback() {
@@ -114,94 +158,84 @@ function stopPlayback() {
   progressDots.style.display = 'none';
   progressDots.innerHTML = '';
 }
-
 bigTextOverlay.addEventListener('click', stopPlayback);
 
-// Called when a sign is confidently detected: adds to conversation log + speaks it live
-function addSignedWord(word) {
-  const now = Date.now();
-  if (word === lastAddedSign && now - lastAddedTime < ADD_COOLDOWN_MS) return;
-  lastAddedSign = word;
-  lastAddedTime = now;
-  addBubble(word, 'signed');
-  speakWord(word);
+function buildCaptionHTML(text) {
+  const rawWords = text.split(/\s+/);
+  return rawWords.map(rawWord => {
+    const letters = rawWord.toUpperCase().replace(/[^A-Z]/g, '').split('');
+    const spelled = letters.map(l =>
+      SUPPORTED_LETTERS.includes(l)
+        ? `<span class="known-word">${l}</span>`
+        : `<span class="unknown-letter">${l}</span>`
+    ).join('');
+    return `<span class="spelled-word">${rawWord} <small>(${spelled})</small></span>`;
+  }).join(' ');
 }
 
-// Scans typed/spoken text for words that match known signs, in the order they appear
-function matchSignsInText(text) {
-  const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/);
-  const matches = [];
-  // check multi-word phrases first (like "i love you") then single words
-  const sortedVocab = [...VOCAB].sort((a, b) => b.word.split(' ').length - a.word.split(' ').length);
-  let remaining = ' ' + words.join(' ') + ' ';
-  for (const entry of sortedVocab) {
-    const needle = ' ' + entry.word.toLowerCase() + ' ';
-    if (remaining.includes(needle)) {
-      matches.push(entry);
-      remaining = remaining.replace(needle, ' ');
-    }
-  }
-  // re-order matches by original position in the text for natural sequence
-  const order = [];
-  words.join(' ').toLowerCase();
-  matches.forEach(m => {
-    const idx = text.toLowerCase().indexOf(m.word.toLowerCase());
-    order.push({ ...m, idx });
+// Visual-only: shows every letter of every word as a big fingerspelling sequence
+function playFingerspellSequence(text) {
+  const rawWords = text.toUpperCase().replace(/[^A-Z\s]/g, '').split(/\s+/).filter(Boolean);
+  const sequence = [];
+  rawWords.forEach((word, wi) => {
+    word.split('').forEach(l => sequence.push(l));
+    if (wi < rawWords.length - 1) sequence.push('␣'); // word gap marker
   });
-  order.sort((a, b) => a.idx - b.idx);
-  return order;
-}
+  if (sequence.length === 0) return;
 
-// Plays matched signs one at a time, large on screen, like a slideshow
-function playSignSequence(signList) {
-  if (signList.length === 0) return;
   stopPlayback();
   bigTextOverlay.classList.add('show');
   progressDots.style.display = 'flex';
-  progressDots.innerHTML = signList.map(() => '<span></span>').join('');
+  progressDots.innerHTML = sequence.map(() => '<span></span>').join('');
   const dots = progressDots.querySelectorAll('span');
 
   let i = 0;
   function showStep() {
-    if (i >= signList.length) {
-      stopPlayback();
-      return;
+    if (i >= sequence.length) { stopPlayback(); return; }
+    const l = sequence[i];
+    if (l === '␣') {
+      bigTextContent.innerHTML = `<div class="sign-word-big">(next word)</div>`;
+    } else if (SUPPORTED_LETTERS.includes(l)) {
+      bigTextContent.innerHTML = `<div class="sign-emoji-big">${l}</div>`;
+    } else {
+      bigTextContent.innerHTML = `<div class="sign-emoji-big" style="opacity:0.4;">${l}?</div><div class="sign-word-big" style="font-size:1rem;">(not yet supported)</div>`;
     }
-    const entry = signList[i];
-    bigTextContent.innerHTML = `
-      <div class="sign-emoji-big">${entry.emoji}</div>
-      <div class="sign-word-big">${entry.word}</div>
-    `;
     dots.forEach((d, idx) => d.classList.toggle('active', idx === i));
-    speakWord(entry.word);
     i++;
-    playbackTimer = setTimeout(showStep, 1600);
+    playbackTimer = setTimeout(showStep, 1100);
   }
   showStep();
 }
 
-// Called when the hearing person types/speaks and sends a reply:
-// shows it in the chat log AND plays the matching signs as a visual sequence
+function showCaption(text) {
+  stopPlayback();
+  bigTextOverlay.classList.add('show');
+  if (visualModeToggle.checked) {
+    playFingerspellSequence(text);
+  } else {
+    progressDots.style.display = 'none';
+    bigTextContent.innerHTML = `<div class="caption-text">${buildCaptionHTML(text)}</div>`;
+    const readTime = Math.max(2200, text.split(/\s+/).length * 700);
+    playbackTimer = setTimeout(stopPlayback, readTime);
+  }
+}
+
 sendReplyBtn.addEventListener('click', sendReply);
-replyInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') sendReply();
-});
+replyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendReply(); });
 
 function sendReply() {
   const text = replyInput.value.trim();
   if (!text) return;
   addBubble(text, 'typed');
-  const matched = matchSignsInText(text);
-  
-    playSignSequence(matched);
-  } else {
-    bigTextContent.innerHTML = `<div class="sign-word-big">No known signs found in that sentence</div>`;
-    progressDots.style.display = 'none';
-    bigTextOverlay.classList.add('show');
-    playbackTimer = setTimeout(stopPlayback, 1800);
-  }
+  showCaption(text);
   replyInput.value = '';
 }
+
+clearConversationBtn.addEventListener('click', () => {
+  conversationLog.innerHTML = '';
+  lastAddedLetter = "";
+  letterBuffer = [];
+});
 
 /* ---------- Speech-to-text for replies ---------- */
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -213,34 +247,16 @@ if (SpeechRecognitionAPI) {
   recognizer.lang = 'en-US';
   recognizer.interimResults = false;
   recognizer.maxAlternatives = 1;
-
-  recognizer.onstart = () => {
-    isListening = true;
-    micBtn.classList.add('listening');
-    micBtn.textContent = '⏺';
-  };
-  recognizer.onend = () => {
-    isListening = false;
-    micBtn.classList.remove('listening');
-    micBtn.textContent = '🎤';
-  };
-  recognizer.onerror = () => {
-    isListening = false;
-    micBtn.classList.remove('listening');
-    micBtn.textContent = '🎤';
-  };
+  recognizer.onstart = () => { isListening = true; micBtn.classList.add('listening'); micBtn.textContent = '⏺'; };
+  recognizer.onend = () => { isListening = false; micBtn.classList.remove('listening'); micBtn.textContent = '🎤'; };
+  recognizer.onerror = () => { isListening = false; micBtn.classList.remove('listening'); micBtn.textContent = '🎤'; };
   recognizer.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    replyInput.value = transcript;
+    replyInput.value = event.results[0][0].transcript;
     sendReply();
   };
-
   micBtn.addEventListener('click', () => {
-    if (isListening) {
-      recognizer.stop();
-    } else {
-      try { recognizer.start(); } catch (e) { /* already started, ignore */ }
-    }
+    if (isListening) { recognizer.stop(); }
+    else { try { recognizer.start(); } catch (e) {} }
   });
 } else {
   micBtn.addEventListener('click', () => {
@@ -248,16 +264,7 @@ if (SpeechRecognitionAPI) {
   });
 }
 
-clearConversationBtn.addEventListener('click', () => {
-  conversationLog.innerHTML = '';
-  lastAddedSign = "";
-});
-
-/* ---------- Sign detection (hand tracking) ---------- */
-let stableSign = "";
-let stableCount = 0;
-let STABLE_FRAMES_NEEDED = 8;
-
+/* ---------- Hand tracking / ASL letter classification ---------- */
 function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y, (a.z||0) - (b.z||0));
 }
@@ -276,19 +283,25 @@ function fingerStates(lm) {
   };
 }
 
-function classifySign(lm) {
+function classifyLetter(lm) {
   const f = fingerStates(lm);
-  if (f.thumb && f.index && f.middle && f.ring && f.pinky) return "Hello";
-  if (!f.thumb && !f.index && !f.middle && !f.ring && !f.pinky) return "Stop";
-  if (f.thumb && !f.index && !f.middle && !f.ring && !f.pinky) {
-    if (lm[4].y < lm[0].y - 0.05) return "Yes";
-    if (lm[4].y > lm[0].y + 0.05) return "No";
-  }
-  if (f.index && f.middle && !f.ring && !f.pinky) return "Peace";
-  if (f.thumb && f.index && !f.middle && !f.ring && f.pinky) return "I love you";
-  if (!f.thumb && f.index && !f.middle && !f.ring && !f.pinky) return "Wait";
+
+  if (!f.thumb && !f.index && !f.middle && !f.ring && !f.pinky) return "S"; // closed fist
+  if (f.thumb && !f.index && !f.middle && !f.ring && !f.pinky) return "A"; // fist, thumb out
+  if (!f.thumb && f.index && f.middle && f.ring && f.pinky) return "B"; // 4 up, thumb tucked
+  if (!f.thumb && f.index && !f.middle && !f.ring && !f.pinky) return "D"; // index only
+  if (!f.thumb && !f.index && !f.middle && !f.ring && f.pinky) return "I"; // pinky only
+  if (f.thumb && f.index && !f.middle && !f.ring && !f.pinky) return "L"; // thumb + index
+  if (!f.thumb && f.index && f.middle && !f.ring && !f.pinky) return "V"; // index + middle
+  if (!f.thumb && f.index && f.middle && f.ring && !f.pinky) return "W"; // index+middle+ring
+  if (f.thumb && !f.index && !f.middle && !f.ring && f.pinky) return "Y"; // thumb + pinky
+
   return null;
 }
+
+let stableSign = "";
+let stableCount = 0;
+let STABLE_FRAMES_NEEDED = 8;
 
 function onResults(results) {
   canvasEl.width = videoEl.videoWidth;
@@ -301,23 +314,18 @@ function onResults(results) {
     for (const lm of results.multiHandLandmarks) {
       drawConnectors(ctx, lm, Hands.HAND_CONNECTIONS, { color: '#6b8c7a', lineWidth: 2 });
       drawLandmarks(ctx, lm, { color: '#c9832f', lineWidth: 1, radius: 3 });
-      const sign = classifySign(lm);
-      if (sign) detected = sign;
+      const letter = classifyLetter(lm);
+      if (letter) detected = letter;
     }
   }
 
-  if (detected && detected === stableSign) {
-    stableCount++;
-  } else {
-    stableSign = detected;
-    stableCount = 0;
-  }
+  if (detected && detected === stableSign) { stableCount++; }
+  else { stableSign = detected; stableCount = 0; }
 
   if (detected && stableCount >= STABLE_FRAMES_NEEDED) {
-    signLabel.textContent = detected;
+    addSignedLetter(detected);
     signLabel.classList.remove('idle');
-    addSignedWord(detected);
-  } else if (!detected) {
+  } else if (!detected && letterBuffer.length === 0) {
     signLabel.textContent = "…";
     signLabel.classList.add('idle');
   }
@@ -327,12 +335,7 @@ function onResults(results) {
 const hands = new Hands({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
 });
-hands.setOptions({
-  maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.6,
-  minTrackingConfidence: 0.6
-});
+hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
 hands.onResults(onResults);
 
 let camera = null;
@@ -346,16 +349,10 @@ sensitivitySlider.addEventListener('input', (e) => {
   STABLE_FRAMES_NEEDED = parseInt(e.target.value);
   sensitivityValue.textContent = e.target.value;
 });
-
 confidenceSlider.addEventListener('input', (e) => {
   const val = parseFloat(e.target.value);
   confidenceValue.textContent = val.toFixed(2);
-  hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: val,
-    minTrackingConfidence: val
-  });
+  hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: val, minTrackingConfidence: val });
 });
 
 startBtn.addEventListener('click', async () => {
@@ -364,8 +361,7 @@ startBtn.addEventListener('click', async () => {
   try {
     camera = new Camera(videoEl, {
       onFrame: async () => { await hands.send({ image: videoEl }); },
-      width: 640,
-      height: 480
+      width: 640, height: 480
     });
     await camera.start();
     statusDot.classList.add('live');
@@ -381,10 +377,7 @@ startBtn.addEventListener('click', async () => {
 });
 
 stopBtn.addEventListener('click', () => {
-  if (camera) {
-    camera.stop();
-    camera = null;
-  }
+  if (camera) { camera.stop(); camera = null; }
   if (videoEl.srcObject) {
     videoEl.srcObject.getTracks().forEach(track => track.stop());
     videoEl.srcObject = null;
